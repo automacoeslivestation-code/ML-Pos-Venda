@@ -1,4 +1,5 @@
 """Escalador: notifica humano via Telegram quando o sistema nao sabe responder."""
+import logging
 import httpx
 
 from config import config
@@ -6,6 +7,8 @@ from agents.monitor import Interacao
 from agents.analisador import Analise
 from agents.respondedor import Resposta
 from agents.pendentes import Pendentes
+
+log = logging.getLogger(__name__)
 
 
 class Escalador:
@@ -34,7 +37,8 @@ class Escalador:
             f"Para responder:\n/r {interacao.id} sua resposta aqui"
         )
 
-        httpx.post(
+        log.info(f"Enviando Telegram para chat_id={config.TELEGRAM_CHAT_ID!r}")
+        resp = httpx.post(
             self._url,
             json={
                 "chat_id": config.TELEGRAM_CHAT_ID,
@@ -42,3 +46,5 @@ class Escalador:
             },
             timeout=10,
         )
+        if not resp.is_success:
+            log.error(f"Telegram erro {resp.status_code}: {resp.text}")
