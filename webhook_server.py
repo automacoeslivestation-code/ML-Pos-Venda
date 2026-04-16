@@ -23,12 +23,26 @@ async def _ciclo_startup():
         log.error(f"Erro no ciclo de startup: {e}")
 
 
+async def _loop_telegram():
+    """Verifica respostas do Telegram a cada 10s, independente do webhook do ML."""
+    await asyncio.sleep(5)
+    while True:
+        try:
+            respondidas = orq.telegram_listener.processar_respostas()
+            if respondidas:
+                log.info(f"Telegram loop: {respondidas} resposta(s) processada(s)")
+        except Exception as e:
+            log.error(f"Erro no loop Telegram: {e}")
+        await asyncio.sleep(10)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global orq
     orq = Orquestrador()
     log.info("Orquestrador iniciado")
     asyncio.create_task(_ciclo_startup())
+    asyncio.create_task(_loop_telegram())
     yield
 
 
