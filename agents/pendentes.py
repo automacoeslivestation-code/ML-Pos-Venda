@@ -21,11 +21,12 @@ class Pendentes:
             encoding="utf-8",
         )
 
-    def adicionar(self, interacao_id: str, texto: str, intencao: str, tipo: str) -> None:
+    def adicionar(self, interacao_id: str, texto: str, intencao: str, tipo: str, nome_comprador: str = "") -> None:
         self._dados[interacao_id] = {
             "texto": texto,
             "intencao": intencao,
             "tipo": tipo,
+            "nome_comprador": nome_comprador,
         }
         self._salvar()
 

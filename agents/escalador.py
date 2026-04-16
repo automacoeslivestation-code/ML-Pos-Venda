@@ -19,6 +19,7 @@ class Escalador:
             texto=interacao.texto,
             intencao=analise.intencao.value,
             tipo=interacao.tipo.value,
+            nome_comprador=interacao.nome_comprador,
         )
 
         emoji = "🚨" if analise.urgente else "❓"

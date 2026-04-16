@@ -17,6 +17,7 @@ class Interacao:
     texto: str            # ultima mensagem ou pergunta
     item_id: str = ""     # MLB... do anuncio relacionado
     ordem_id: str = ""    # numero do pedido (mensagens pos-venda)
+    nome_comprador: str = ""
     historico: list[str] = field(default_factory=list)
 
 
@@ -38,12 +39,15 @@ class Monitor:
             qid = str(p["id"])
             if qid in self._respondidas:
                 continue
+            from_data = p.get("from", {})
+            nome = from_data.get("nickname", "")
             resultado.append(
                 Interacao(
                     tipo=TipoInteracao.PERGUNTA,
                     id=qid,
                     texto=p["text"],
                     item_id=p.get("item_id", ""),
+                    nome_comprador=nome,
                 )
             )
         return resultado
