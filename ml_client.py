@@ -61,6 +61,13 @@ class MLClient:
 
     # --- Perguntas ---
 
+    def buscar_titulo_item(self, item_id: str) -> str:
+        try:
+            data = self._get(f"/items/{item_id}", attributes="title")
+            return data.get("title", "")
+        except Exception:
+            return ""
+
     def listar_perguntas_novas(self) -> list[dict]:
         data = self._get(
             "/questions/search",

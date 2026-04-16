@@ -19,6 +19,7 @@ class Interacao:
     id: str               # question_id ou pack_id
     texto: str            # ultima mensagem ou pergunta
     item_id: str = ""     # MLB... do anuncio relacionado
+    titulo_item: str = "" # titulo do anuncio
     ordem_id: str = ""    # numero do pedido (mensagens pos-venda)
     nome_comprador: str = ""
     historico: list[str] = field(default_factory=list)
@@ -50,12 +51,15 @@ class Monitor:
                 continue
             from_data = p.get("from", {})
             nome = from_data.get("nickname", "")
+            item_id = p.get("item_id", "")
+            titulo = self._client.buscar_titulo_item(item_id) if item_id else ""
             resultado.append(
                 Interacao(
                     tipo=TipoInteracao.PERGUNTA,
                     id=qid,
                     texto=p["text"],
-                    item_id=p.get("item_id", ""),
+                    item_id=item_id,
+                    titulo_item=titulo,
                     nome_comprador=nome,
                 )
             )

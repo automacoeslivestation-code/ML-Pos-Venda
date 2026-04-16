@@ -26,15 +26,13 @@ class Escalador:
         )
 
         emoji = "🚨" if analise.urgente else "❓"
-        tipo = "Pergunta" if interacao.tipo.value == "pergunta" else "Mensagem pos-venda"
+        titulo = interacao.titulo_item or "sem titulo"
 
         msg = (
-            f"{emoji} {tipo} aguardando sua resposta\n\n"
-            f"Intencao: {analise.intencao.value}\n"
-            f"Resumo: {analise.resumo}\n\n"
-            f"Mensagem do comprador:\n{interacao.texto}\n\n"
-            f"Sugestao do Claude ({resposta.confianca:.0%} confianca):\n{resposta.texto}\n\n"
-            f"Para responder:\n/r {interacao.id} sua resposta aqui"
+            f"{emoji} {titulo}\n\n"
+            f"Comprador: {interacao.texto}\n\n"
+            f"Sugestao ({resposta.confianca:.0%}): {resposta.texto}\n\n"
+            f"/r {interacao.id} sua resposta aqui"
         )
 
         # Telegram limita mensagens a 4096 chars
