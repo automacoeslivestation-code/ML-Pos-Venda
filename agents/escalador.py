@@ -37,11 +37,23 @@ class Escalador:
             f"Para responder:\n/r {interacao.id} sua resposta aqui"
         )
 
-        log.info(f"Enviando Telegram para chat_id={config.TELEGRAM_CHAT_ID!r}")
+        # Telegram limita mensagens a 4096 chars
+        if len(msg) > 4096:
+            rodape = f"\n\nPara responder:\n/r {interacao.id} sua resposta aqui"
+            msg = msg[: 4096 - len(rodape)] + rodape
+
+        # chat_id como int quando possivel (evita rejeicao por tipo incorreto)
+        chat_id = config.TELEGRAM_CHAT_ID
+        try:
+            chat_id = int(chat_id)
+        except (ValueError, TypeError):
+            pass
+
+        log.info(f"Enviando Telegram para chat_id={chat_id!r} (len={len(msg)})")
         resp = httpx.post(
             self._url,
             json={
-                "chat_id": config.TELEGRAM_CHAT_ID,
+                "chat_id": chat_id,
                 "text": msg,
             },
             timeout=10,
