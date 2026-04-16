@@ -9,6 +9,7 @@ from agents.analisador import Analisador
 from agents.especialista import Especialista
 from agents.respondedor import Respondedor
 from agents.escalador import Escalador
+from agents.telegram_listener import TelegramListener
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -22,8 +23,15 @@ class Orquestrador:
         self.especialista = Especialista()
         self.respondedor = Respondedor(ml)
         self.escalador = Escalador()
+        self.telegram_listener = TelegramListener(ml)
 
     def ciclo(self) -> None:
+        # Processa respostas do humano no Telegram primeiro
+        respondidas = self.telegram_listener.processar_respostas()
+        if respondidas:
+            log.info(f"Respostas humanas processadas: {respondidas}")
+
+        # Busca novas interacoes no ML
         log.info("Buscando novas interacoes...")
         interacoes = self.monitor.buscar_novas()
         log.info(f"Encontradas: {len(interacoes)}")

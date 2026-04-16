@@ -1,6 +1,8 @@
 """Especialista: carrega base de conhecimento dos produtos para embasar respostas."""
 from pathlib import Path
 
+from agents.memoria import Memoria
+
 
 BASE_DIR = Path(__file__).parent.parent / "base_conhecimento"
 
@@ -8,6 +10,7 @@ BASE_DIR = Path(__file__).parent.parent / "base_conhecimento"
 class Especialista:
     def __init__(self):
         self._cache: dict[str, str] = {}
+        self._memoria = Memoria()
 
     def _carregar(self, nome: str) -> str:
         if nome not in self._cache:
@@ -19,7 +22,7 @@ class Especialista:
         """Retorna o contexto relevante da base de conhecimento para a intencao."""
         partes = []
 
-        # Sempre inclui produtos e FAQ
+        # Arquivos .md manuais
         partes.append(self._carregar("produtos"))
         partes.append(self._carregar("faq"))
 
@@ -28,5 +31,10 @@ class Especialista:
             partes.append(self._carregar("politicas"))
         elif intencao == "duvida_tecnica":
             partes.append(self._carregar("instalacao"))
+
+        # Exemplos aprovados pelo humano (aprendizado continuo)
+        exemplos = self._memoria.formatar_contexto(intencao)
+        if exemplos:
+            partes.append(exemplos)
 
         return "\n\n---\n\n".join(p for p in partes if p)
