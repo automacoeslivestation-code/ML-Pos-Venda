@@ -110,12 +110,21 @@ class TelegramListener:
             self._enviar_telegram("Nenhuma pergunta pendente.")
             return
         for iid, p in todos.items():
-            titulo = p.get("titulo_item") or "sem titulo"
-            confianca = p.get("confianca", 0)
-            sugestao = p.get("sugestao", "")
+            tipo = p.get("tipo", "pergunta")
             texto = p.get("texto", "")
+            if tipo == "mensagem":
+                order_status = p.get("order_status", "")
+                cabecalho = f"💬 Pós-venda" + (f" | {order_status}" if order_status else "")
+            else:
+                item_id = p.get("item_id", "")
+                if item_id:
+                    item_id_fmt = item_id.replace("MLB", "MLB-", 1)
+                    link = f"https://produto.mercadolivre.com.br/{item_id_fmt}"
+                    cabecalho = f"❓ Pergunta\n{link}"
+                else:
+                    cabecalho = "❓ Pergunta"
             msg = (
-                f"❓ {titulo}\n\n"
+                f"{cabecalho}\n\n"
                 f"Comprador: {texto}\n\n"
                 f"/r {iid} sua resposta aqui"
             )

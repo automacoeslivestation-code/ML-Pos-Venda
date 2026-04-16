@@ -75,7 +75,8 @@ class Orquestrador:
                     break
 
             if texto:
-                self.escalador.escalar_mensagem(pack_id, nome_comprador, texto)
+                order_status = self._buscar_status_pedido(pack_id)
+                self.escalador.escalar_mensagem(pack_id, nome_comprador, texto, order_status)
                 log.info(f"Mensagem pack={pack_id} escalada: '{texto[:60]}'")
             else:
                 self.escalador.escalar_mensagem_simples()
@@ -83,6 +84,23 @@ class Orquestrador:
         except Exception as e:
             log.error(f"Erro ao processar mensagem pack {pack_id}: {e}")
             self.escalador.escalar_mensagem_simples()
+
+    def _buscar_status_pedido(self, order_id: str) -> str:
+        """Retorna status legivel do pedido: Não enviado / Em trânsito / Entregue / Cancelado."""
+        try:
+            pedido = self.ml.buscar_pedido(order_id)
+            shipping = pedido.get("shipping", {}) or {}
+            ship_status = shipping.get("status", "")
+            order_status = pedido.get("status", "")
+            if order_status == "cancelled":
+                return "Cancelado"
+            if ship_status == "delivered":
+                return "Entregue"
+            if ship_status == "shipped":
+                return "Em trânsito"
+            return "Não enviado"
+        except Exception:
+            return ""
 
     def rodar(self) -> None:
         log.info(f"Iniciando loop com intervalo de {config.POLLING_INTERVAL}s")

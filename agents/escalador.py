@@ -16,7 +16,7 @@ class Escalador:
         self._url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage"
         self._pendentes = Pendentes()
 
-    def escalar_mensagem(self, pack_id: str, nome_comprador: str, texto: str) -> None:
+    def escalar_mensagem(self, pack_id: str, nome_comprador: str, texto: str, order_status: str = "") -> None:
         """Notifica o humano sobre mensagem(ns) pos-venda de um comprador."""
         self._pendentes.adicionar(
             interacao_id=pack_id,
@@ -24,6 +24,7 @@ class Escalador:
             intencao="mensagem_pos_venda",
             tipo="mensagem",
             nome_comprador=nome_comprador,
+            order_status=order_status,
         )
 
         msg = (
@@ -70,6 +71,7 @@ class Escalador:
             tipo=interacao.tipo.value,
             nome_comprador=interacao.nome_comprador,
             titulo_item=interacao.titulo_item,
+            item_id=interacao.item_id,
             sugestao=resposta.texto,
             confianca=resposta.confianca,
         )

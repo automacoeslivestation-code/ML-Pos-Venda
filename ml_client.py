@@ -89,16 +89,12 @@ class MLClient:
     _ML_AGENT_ID = 3037675074
 
     def enviar_followup(self, pack_id: str, texto: str) -> dict:
-        """Envia mensagem proativa de follow-up (compra/envio/entrega)."""
+        """Envia mensagem proativa de follow-up (compra/envio/entrega) via Action Guide."""
         if len(texto) > 350:
             texto = texto[:347] + "..."
         return self._post(
-            f"/messages/packs/{pack_id}/sellers/{config.ML_SELLER_ID}",
-            {
-                "from": {"user_id": int(config.ML_SELLER_ID)},
-                "to": {"user_id": self._ML_AGENT_ID},
-                "text": texto,
-            },
+            f"/messages/action_guide/packs/{pack_id}/option",
+            {"option_id": "OTHER", "text": texto},
             tag="post_sale",
         )
 

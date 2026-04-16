@@ -22,14 +22,16 @@ class Pendentes:
         )
 
     def adicionar(self, interacao_id: str, texto: str, intencao: str, tipo: str,
-                  nome_comprador: str = "", titulo_item: str = "",
-                  sugestao: str = "", confianca: float = 0.0) -> None:
+                  nome_comprador: str = "", titulo_item: str = "", item_id: str = "",
+                  order_status: str = "", sugestao: str = "", confianca: float = 0.0) -> None:
         self._dados[interacao_id] = {
             "texto": texto,
             "intencao": intencao,
             "tipo": tipo,
             "nome_comprador": nome_comprador,
             "titulo_item": titulo_item,
+            "item_id": item_id,
+            "order_status": order_status,
             "sugestao": sugestao,
             "confianca": confianca,
         }
