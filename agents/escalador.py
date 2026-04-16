@@ -29,10 +29,13 @@ class Escalador:
         )
 
         emoji = "🚨" if analise.urgente else "❓"
-        titulo = interacao.titulo_item or "sem titulo"
+        item_link = (
+            f"https://mercadolivre.com.br/{interacao.item_id}"
+            if interacao.item_id else ""
+        )
 
         msg = (
-            f"{emoji} {titulo}\n\n"
+            f"{emoji} {item_link}\n\n"
             f"Comprador: {interacao.texto}\n\n"
             f"/r {interacao.id} sua resposta aqui"
         )

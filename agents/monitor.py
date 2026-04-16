@@ -52,14 +52,12 @@ class Monitor:
             from_data = p.get("from", {})
             nome = from_data.get("nickname", "")
             item_id = p.get("item_id", "")
-            titulo = self._client.buscar_titulo_item(item_id) if item_id else ""
             resultado.append(
                 Interacao(
                     tipo=TipoInteracao.PERGUNTA,
                     id=qid,
                     texto=p["text"],
                     item_id=item_id,
-                    titulo_item=titulo,
                     nome_comprador=nome,
                 )
             )
