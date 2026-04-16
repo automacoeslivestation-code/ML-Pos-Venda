@@ -15,6 +15,10 @@ Claude gera uma sugestão de resposta
         ↓
 Você recebe no Telegram e decide
         ↓
+Você responde com /r <id> <texto>
+        ↓
+Formatador polida: saudação + horário + texto profissional
+        ↓
 Resposta postada no ML + salva na memória
         ↓
 Com o tempo, o sistema aprende e ganha autonomia
@@ -31,6 +35,7 @@ Com o tempo, o sistema aprende e ganha autonomia
 | **Especialista** | Carrega contexto da base de conhecimento |
 | **Respondedor** | Gera sugestão de resposta com IA |
 | **Escalador** | Envia para você via Telegram |
+| **Formatador** | Polida a resposta antes de postar no ML |
 | **Orquestrador** | Coordena tudo em loop contínuo |
 
 ---
@@ -66,10 +71,19 @@ Para responder, envie:
 
 Responda com:
 ```
-/r q123 Sim, funciona via WiFi. Basta configurar pelo app...
+/r q123 sim funciona via wifi configura pelo app
 ```
 
-A resposta é postada no ML e salva na memória automaticamente.
+O Formatador transforma automaticamente em:
+```
+Boa tarde, João! Sim, a câmera funciona via WiFi. Configure pelo aplicativo.
+```
+
+Regras do Formatador:
+- Adiciona saudação com nome do comprador e horário do dia
+- Reformula para linguagem profissional e cordial
+- **Nunca inventa informações** — usa apenas o que você escreveu
+- **Nunca remove** o que você escreveu
 
 ---
 
@@ -142,7 +156,7 @@ uv run python main.py
 3. Configure as variáveis de ambiente no painel do Railway
 4. Configure o **Start Command**: `uv run python main.py`
 5. Copie a URL pública gerada pelo Railway
-6. No painel do ML Developer, configure a **URL de notificação**: `https://sua-url.railway.app/webhook`
+6. No ML Developer, configure a **URL de notificação**: `https://sua-url.railway.app/webhook`
 
 ---
 
