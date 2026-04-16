@@ -3,10 +3,18 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi.responses import HTMLResponse
 
+from config import config
 from agents.orquestrador import Orquestrador
+
+RAILWAY_API_TOKEN = "9165c94a-5cce-42f9-8ae3-160b38b290b1"
+RAILWAY_SERVICE_ID = "96a04753-9183-444c-8ec6-4742ddaf0323"
+RAILWAY_ENVIRONMENT_ID = "c2cff01d-acc3-4fd4-a6de-9fc0c2d2bcf9"
+ML_REDIRECT_URI = "https://ml-pos-venda-production-3f78.up.railway.app/callback"
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +60,92 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/callback")
+async def ml_callback(request: Request):
+    """Captura o code do ML OAuth, troca pelo token e atualiza variaveis no Railway."""
+    code = request.query_params.get("code", "")
+    if not code:
+        return HTMLResponse("<h2>Erro: code nao recebido.</h2>", status_code=400)
+
+    # Troca o code pelo token
+    resp = httpx.post(
+        "https://api.mercadolibre.com/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "client_id": config.ML_CLIENT_ID,
+            "client_secret": config.ML_CLIENT_SECRET,
+            "code": code,
+            "redirect_uri": ML_REDIRECT_URI,
+        },
+        timeout=15,
+    )
+
+    if not resp.is_success:
+        return HTMLResponse(f"<h2>Erro ao trocar token: {resp.text}</h2>", status_code=500)
+
+    data = resp.json()
+    access_token = data.get("access_token", "")
+    refresh_token = data.get("refresh_token", "")
+
+    # Atualiza variaveis no Railway via GraphQL
+    erros = []
+    for nome, valor in [("ML_ACCESS_TOKEN", access_token), ("ML_REFRESH_TOKEN", refresh_token)]:
+        if not valor:
+            continue
+        ok = _atualizar_variavel_railway(nome, valor)
+        if not ok:
+            erros.append(nome)
+
+    if erros:
+        log.error(f"Falha ao atualizar no Railway: {erros}")
+        return HTMLResponse(
+            f"<h2>Token obtido mas falha ao salvar no Railway: {erros}</h2>"
+            f"<p>Salve manualmente:</p>"
+            f"<p>ML_ACCESS_TOKEN={access_token}</p>"
+            f"<p>ML_REFRESH_TOKEN={refresh_token}</p>",
+            status_code=500,
+        )
+
+    log.info("Tokens ML atualizados no Railway com sucesso")
+    tem_refresh = "SIM" if refresh_token else "NAO (ML nao retornou)"
+    return HTMLResponse(
+        f"<h2>Tokens atualizados no Railway!</h2>"
+        f"<p>refresh_token obtido: <b>{tem_refresh}</b></p>"
+        f"<p>O Railway vai reiniciar com os novos tokens em instantes.</p>"
+    )
+
+
+def _atualizar_variavel_railway(nome: str, valor: str) -> bool:
+    """Atualiza uma variavel de ambiente no Railway via API GraphQL."""
+    query = """
+    mutation upsertVariables($input: VariableCollectionUpsertInput!) {
+        variableCollectionUpsert(input: $input)
+    }
+    """
+    variables = {
+        "input": {
+            "projectId": "b12551c3-7c69-4bb6-be0b-884141f51198",
+            "serviceId": RAILWAY_SERVICE_ID,
+            "environmentId": RAILWAY_ENVIRONMENT_ID,
+            "variables": {nome: valor},
+        }
+    }
+    try:
+        resp = httpx.post(
+            "https://backboard.railway.com/graphql/v2",
+            json={"query": query, "variables": variables},
+            headers={
+                "Authorization": f"Bearer {RAILWAY_API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            timeout=15,
+        )
+        return resp.is_success and "errors" not in resp.json()
+    except Exception as e:
+        log.error(f"Erro ao chamar Railway API: {e}")
+        return False
 
 
 @app.post("/webhook")

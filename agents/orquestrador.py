@@ -59,29 +59,16 @@ class Orquestrador:
             log.info(f"  Escalado para humano via Telegram")
 
     def processar_mensagem_pack(self, pack_id: str) -> None:
-        """Busca todas as mensagens de um pack e notifica o humano via Telegram."""
+        """Notifica o humano que chegou uma mensagem de comprador via Telegram.
+
+        A API do ML retorna 404 ao tentar ler o conteudo das mensagens (sem permissao),
+        por isso apenas notificamos o humano para acessar o ML diretamente.
+        """
         try:
-            msgs = self.monitor._client.buscar_mensagens_pack(pack_id)
-            if not msgs:
-                return
-
-            # Filtra apenas mensagens do comprador
-            msgs_comprador = [
-                m for m in msgs
-                if m.get("from", {}).get("user_id") != int(config.ML_SELLER_ID)
-                and m.get("text", "").strip()
-            ]
-            if not msgs_comprador:
-                return
-
-            nome = msgs_comprador[-1].get("from", {}).get("nickname", "")
-            textos = [m["text"].strip() for m in msgs_comprador]
-            texto_consolidado = "\n".join(f"• {t}" for t in textos) if len(textos) > 1 else textos[0]
-
-            self.escalador.escalar_mensagem(pack_id, nome, texto_consolidado)
-            log.info(f"Pack {pack_id} escalado com {len(msgs_comprador)} mensagem(ns)")
+            self.escalador.escalar_mensagem_simples()
+            log.info(f"Webhook de mensagem recebido (pack_id={pack_id}), humano notificado via Telegram")
         except Exception as e:
-            log.error(f"Erro ao processar pack {pack_id}: {e}")
+            log.error(f"Erro ao notificar mensagem pack {pack_id}: {e}")
 
     def rodar(self) -> None:
         log.info(f"Iniciando loop com intervalo de {config.POLLING_INTERVAL}s")

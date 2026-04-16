@@ -27,19 +27,39 @@ uv run python -m pytest tests/ -v
 
 ## Regra de Uso de Agentes Claude
 
-**OBRIGATORIO — duas regras sem excecao:**
+**OBRIGATORIO — sem excecao:**
 
-- **PLANEJAR / ANALISAR / INVESTIGAR** qualquer coisa neste projeto → disparar `pos-venda-explorer` ANTES de qualquer resposta ou decisao
-- **IMPLEMENTAR / CORRIGIR / EXECUTAR** qualquer coisa neste projeto → disparar `pos-venda-dev` para fazer o trabalho
+O contexto principal atua como **orquestrador**. Ele NUNCA implementa nem analisa diretamente.
+Ele coordena os agentes especializados e apresenta o resultado ao usuario.
 
-Nunca implementar diretamente no contexto principal. Nunca analisar sem o explorer. O arquiteto coordena — os agentes executam.
+### Fluxo obrigatorio
+
+```
+Usuario pede algo
+      ↓
+Orquestrador (contexto principal)
+      ↓
+      ├── ANALISAR / INVESTIGAR / PLANEJAR → Explore (subagent_type=Explore)
+      │         retorna analise/plano
+      │
+      └── IMPLEMENTAR / CORRIGIR / EXECUTAR → Plan ou Agent dev
+                retorna codigo pronto
+```
+
+### Regras
+
+- NUNCA implementar diretamente no contexto principal
+- NUNCA analisar codigo sem usar o agente Explore primeiro
+- SEMPRE usar subagent_type=Explore para investigar
+- SEMPRE usar subagent_type=Plan ou Agent para implementar
+- O orquestrador apenas coordena e apresenta resultados
 
 | Tarefa | Agente correto |
 |--------|----------------|
-| Explorar codigo, entender fluxo, investigar bug | `pos-venda-explorer` |
-| Planejar nova feature ou mudanca de arquitetura | `pos-venda-explorer` |
-| Implementar feature, corrigir bug, escrever teste | `pos-venda-dev` |
-| Qualquer duvida sobre o que um modulo faz | `pos-venda-explorer` |
+| Explorar codigo, entender fluxo, investigar bug | `subagent_type=Explore` |
+| Planejar nova feature ou mudanca de arquitetura | `subagent_type=Plan` |
+| Implementar feature, corrigir bug, escrever teste | `subagent_type=Plan` com isolamento |
+| Qualquer duvida sobre o que um modulo faz | `subagent_type=Explore` |
 
 ## Agentes do Sistema (codigo)
 

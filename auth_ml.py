@@ -1,15 +1,34 @@
-"""Script de autenticacao OAuth ML — roda para gerar/renovar o token."""
+"""Script de autenticacao OAuth ML — captura o code via servidor local."""
 import os
 import webbrowser
+import threading
 import httpx
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv, set_key
 
 load_dotenv()
 
 CLIENT_ID = os.getenv("ML_CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("ML_CLIENT_SECRET", "")
-REDIRECT_URI = "https://webhook.site/88a9cc8f-8539-4cb5-b575-fb785b3cc0fe"
+REDIRECT_URI = "http://localhost:8888/callback"
 ENV_FILE = ".env"
+
+code_recebido = None
+
+
+class CallbackHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        global code_recebido
+        params = parse_qs(urlparse(self.path).query)
+        code_recebido = params.get("code", [None])[0]
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Autorizado! Pode fechar esta aba.")
+        threading.Thread(target=self.server.shutdown).start()
+
+    def log_message(self, *args):
+        pass
 
 
 def main():
@@ -25,23 +44,25 @@ def main():
         f"&scope=offline_access+read+write"
     )
 
-    print("Acesse essa URL no navegador onde voce esta logado no Mercado Livre:")
-    print(f"\n{auth_url}\n")
+    print("Abrindo navegador para autorizacao...")
     webbrowser.open(auth_url)
+    print("Aguardando autorizacao em http://localhost:8888/callback ...")
 
-    print("Apos autorizar, copie o 'code' que aparecer no webhook.site.")
-    print("Exemplo: code=TG-XXXXXX\n")
+    server = HTTPServer(("localhost", 8888), CallbackHandler)
+    server.serve_forever()
 
-    code = input("Cole o code aqui: ").strip()
+    if not code_recebido:
+        print("Erro: code nao recebido.")
+        return
 
-    print("\nTrocando code pelo token...")
+    print(f"\nCode recebido! Trocando pelo token...")
     resp = httpx.post(
         "https://api.mercadolibre.com/oauth/token",
         data={
             "grant_type": "authorization_code",
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
-            "code": code,
+            "code": code_recebido,
             "redirect_uri": REDIRECT_URI,
         },
     )
@@ -60,13 +81,12 @@ def main():
 
     if refresh_token:
         set_key(ENV_FILE, "ML_REFRESH_TOKEN", refresh_token)
-        print(f"\nSucesso! refresh_token obtido — renovacao automatica ativada.")
+        print("Sucesso! refresh_token obtido — renovacao automatica ativada.")
     else:
-        print(f"\nSucesso! access_token salvo (valido por 6h).")
-        print("Para renovar, rode este script novamente.")
+        print("Sucesso! access_token salvo (valido por 6h). Sem refresh_token.")
 
     print(f"ML_SELLER_ID={seller_id}")
-    print(".env atualizado automaticamente.")
+    print(".env atualizado.")
 
 
 if __name__ == "__main__":
