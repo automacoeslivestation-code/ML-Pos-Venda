@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 class Orquestrador:
     def __init__(self):
         ml = MLClient()
+        self.ml = ml
         self.monitor = Monitor(ml)
         self.analisador = Analisador()
         self.especialista = Especialista()
@@ -59,16 +60,32 @@ class Orquestrador:
             log.info(f"  Escalado para humano via Telegram")
 
     def processar_mensagem_pack(self, pack_id: str) -> None:
-        """Notifica o humano que chegou uma mensagem de comprador via Telegram.
-
-        A API do ML retorna 404 ao tentar ler o conteudo das mensagens (sem permissao),
-        por isso apenas notificamos o humano para acessar o ML diretamente.
-        """
+        """Busca mensagens do pack e notifica o humano via Telegram com o texto real."""
         try:
-            self.escalador.escalar_mensagem_simples()
-            log.info(f"Webhook de mensagem recebido (pack_id={pack_id}), humano notificado via Telegram")
+            mensagens = self.ml.buscar_mensagens_pack(pack_id)
+            # Pega a ultima mensagem do comprador
+            texto = ""
+            nome_comprador = ""
+            for msg in reversed(mensagens):
+                from_info = msg.get("from", {})
+                if from_info.get("user_type", "") == "buyers":
+                    texto_raw = msg.get("text", {})
+                    if isinstance(texto_raw, dict):
+                        texto = texto_raw.get("plain", "")
+                    else:
+                        texto = str(texto_raw)
+                    nome_comprador = str(from_info.get("user_id", pack_id))
+                    break
+
+            if texto:
+                self.escalador.escalar_mensagem(pack_id, nome_comprador, texto)
+                log.info(f"Mensagem pack={pack_id} escalada: '{texto[:60]}'")
+            else:
+                self.escalador.escalar_mensagem_simples()
+                log.info(f"Mensagem pack={pack_id} sem texto do comprador, notificacao simples")
         except Exception as e:
-            log.error(f"Erro ao notificar mensagem pack {pack_id}: {e}")
+            log.error(f"Erro ao processar mensagem pack {pack_id}: {e}")
+            self.escalador.escalar_mensagem_simples()
 
     def rodar(self) -> None:
         log.info(f"Iniciando loop com intervalo de {config.POLLING_INTERVAL}s")

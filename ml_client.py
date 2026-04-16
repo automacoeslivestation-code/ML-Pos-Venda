@@ -51,11 +51,11 @@ class MLClient:
         resp.raise_for_status()
         return resp.json()
 
-    def _post(self, path: str, body: dict) -> dict:
-        resp = self._http.post(path, headers=self._headers(), json=body)
+    def _post(self, path: str, body: dict, **params) -> dict:
+        resp = self._http.post(path, headers=self._headers(), json=body, params=params or None)
         if resp.status_code == 401:
             self._renovar_token()
-            resp = self._http.post(path, headers=self._headers(), json=body)
+            resp = self._http.post(path, headers=self._headers(), json=body, params=params or None)
         resp.raise_for_status()
         return resp.json()
 
@@ -86,12 +86,23 @@ class MLClient:
 
     # --- Mensagens pos-venda ---
 
+    def buscar_mensagem_por_uuid(self, uuid: str) -> dict:
+        return self._get(f"/messages/{uuid}", tag="post_sale")
+
+    def listar_nao_lidas(self) -> list[dict]:
+        data = self._get("/messages/unread", tag="post_sale")
+        return data.get("results", [])
+
     def buscar_mensagens_pack(self, pack_id: str) -> list[dict]:
-        data = self._get(f"/messages/packs/{pack_id}/sellers/{config.ML_SELLER_ID}")
+        data = self._get(
+            f"/messages/packs/{pack_id}/sellers/{config.ML_SELLER_ID}",
+            tag="post_sale",
+        )
         return data.get("messages", [])
 
     def responder_mensagem(self, pack_id: str, texto: str) -> dict:
         return self._post(
             f"/messages/packs/{pack_id}/sellers/{config.ML_SELLER_ID}",
-            {"text": texto},
+            {"message": texto},
+            tag="post_sale",
         )

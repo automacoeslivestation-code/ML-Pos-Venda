@@ -30,12 +30,22 @@ class TelegramListener:
         for update in updates:
             self._ultimo_update_id = update["update_id"]
             msg = update.get("message", {})
+            chat_id = msg.get("chat", {}).get("id")
+            if str(chat_id) != str(config.TELEGRAM_CHAT_ID):
+                log.warning(f"Mensagem ignorada de chat_id nao autorizado: {chat_id}")
+                continue
             texto = msg.get("text", "").strip()
 
             if texto.startswith("/r "):
                 processadas += self._processar_resposta(texto)
             elif texto == "/listar":
                 self._listar_pendentes()
+            elif texto == "/status":
+                self._status()
+            elif texto.startswith("/cancelar "):
+                self._cancelar(texto)
+            elif texto == "/comandos":
+                self._comandos()
 
         return processadas
 
@@ -110,6 +120,55 @@ class TelegramListener:
                 f"/r {iid} sua resposta aqui"
             )
             self._enviar_telegram(msg)
+
+    def _status(self) -> None:
+        todos = self._pendentes.todos()
+        total = len(todos)
+        memoria = self._memoria.total()
+        if total == 0:
+            self._enviar_telegram(f"Tudo em dia! Nenhuma pendente.\nBase de conhecimento: {memoria} exemplos.")
+        else:
+            tipos = {"pergunta": 0, "mensagem": 0}
+            for p in todos.values():
+                tipos[p.get("tipo", "pergunta")] += 1
+            self._enviar_telegram(
+                f"Pendentes: {total}\n"
+                f"  Perguntas: {tipos['pergunta']}\n"
+                f"  Mensagens: {tipos['mensagem']}\n"
+                f"Base de conhecimento: {memoria} exemplos.\n\n"
+                f"Use /listar para ver detalhes."
+            )
+
+    def _cancelar(self, texto: str) -> None:
+        """Remove uma pendente sem responder. Formato: /cancelar <id>"""
+        partes = texto.split(" ", 1)
+        if len(partes) < 2 or not partes[1].strip():
+            self._enviar_telegram("Formato invalido. Use: /cancelar <id>")
+            return
+        interacao_id = partes[1].strip()
+        pendente = self._pendentes.buscar(interacao_id)
+        if not pendente:
+            self._enviar_telegram(f"ID `{interacao_id}` nao encontrado ou ja respondido.")
+            return
+        self._pendentes.remover(interacao_id)
+        self._enviar_telegram(f"Pendente `{interacao_id}` removido sem responder.")
+        log.info(f"Pendente {interacao_id} cancelado pelo humano")
+
+    def _comandos(self) -> None:
+        msg = (
+            "Comandos disponíveis:\n\n"
+            "/r <id> <resposta>\n"
+            "  Responde uma pergunta ou mensagem pendente no ML\n\n"
+            "/listar\n"
+            "  Mostra todas as perguntas/mensagens aguardando resposta\n\n"
+            "/status\n"
+            "  Resumo de pendentes e tamanho da base de conhecimento\n\n"
+            "/cancelar <id>\n"
+            "  Remove um pendente sem responder (ex: comprador ja resolveu)\n\n"
+            "/comandos\n"
+            "  Mostra esta lista"
+        )
+        self._enviar_telegram(msg)
 
     def _enviar_telegram(self, texto: str) -> None:
         try:
