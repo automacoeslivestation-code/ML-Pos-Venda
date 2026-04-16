@@ -63,7 +63,11 @@ class MLClient:
 
     def buscar_titulo_item(self, item_id: str) -> str:
         try:
-            resp = self._http.get(f"/items/{item_id}", params={"attributes": "title"})
+            resp = httpx.get(
+                f"https://api.mercadolibre.com/items/{item_id}",
+                params={"attributes": "title"},
+                timeout=10,
+            )
             resp.raise_for_status()
             return resp.json().get("title", "")
         except Exception:
