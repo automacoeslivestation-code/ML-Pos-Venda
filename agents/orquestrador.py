@@ -59,9 +59,18 @@ class Orquestrador:
             self.escalador.escalar(interacao, analise, resposta)
             log.info(f"  Escalado para humano via Telegram")
 
-    def processar_mensagem_pack(self, pack_id: str) -> None:
-        """Busca mensagens do pack e notifica o humano via Telegram com o texto real."""
+    def processar_mensagem_pack(self, resource_id: str) -> None:
+        """Busca mensagens do pack e notifica o humano via Telegram com o texto real.
+        Aceita UUID de mensagem (do webhook) ou pack_id diretamente.
+        """
         try:
+            # Webhook de mensagens manda UUID — resolve para pack_id
+            pack_id = resource_id
+            if "-" in resource_id:
+                msg = self.ml.buscar_mensagem_por_uuid(resource_id)
+                pack_id = str(msg.get("pack_id") or resource_id)
+                log.info(f"UUID {resource_id} resolvido para pack_id={pack_id}")
+
             mensagens = self.ml.buscar_mensagens_pack(pack_id)
             # Pega a ultima mensagem do comprador
             texto = ""
