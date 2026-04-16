@@ -63,8 +63,9 @@ class MLClient:
 
     def buscar_titulo_item(self, item_id: str) -> str:
         try:
-            data = self._get(f"/items/{item_id}", attributes="title")
-            return data.get("title", "")
+            resp = self._http.get(f"/items/{item_id}", params={"attributes": "title"})
+            resp.raise_for_status()
+            return resp.json().get("title", "")
         except Exception:
             return ""
 
