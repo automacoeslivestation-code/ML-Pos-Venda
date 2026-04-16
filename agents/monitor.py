@@ -1,8 +1,11 @@
 """Monitor: busca perguntas e mensagens novas no Mercado Livre."""
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
 from ml_client import MLClient
+
+log = logging.getLogger(__name__)
 
 
 class TipoInteracao(Enum):
@@ -28,8 +31,14 @@ class Monitor:
 
     def buscar_novas(self) -> list[Interacao]:
         interacoes: list[Interacao] = []
-        interacoes.extend(self._buscar_perguntas())
-        interacoes.extend(self._buscar_mensagens())
+        try:
+            interacoes.extend(self._buscar_perguntas())
+        except Exception as e:
+            log.error(f"Erro ao buscar perguntas: {e}")
+        try:
+            interacoes.extend(self._buscar_mensagens())
+        except Exception as e:
+            log.warning(f"Erro ao buscar mensagens (ignorado): {e}")
         return interacoes
 
     def _buscar_perguntas(self) -> list[Interacao]:
