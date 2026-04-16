@@ -96,7 +96,7 @@ class TelegramListener:
         try:
             httpx.post(
                 f"{TELEGRAM_API}/sendMessage",
-                json={"chat_id": config.TELEGRAM_CHAT_ID, "text": texto, "parse_mode": "Markdown"},
+                json={"chat_id": config.TELEGRAM_CHAT_ID, "text": texto},
                 timeout=10,
             )
         except Exception as e:

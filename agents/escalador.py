@@ -26,12 +26,12 @@ class Escalador:
         tipo = "Pergunta" if interacao.tipo.value == "pergunta" else "Mensagem pos-venda"
 
         msg = (
-            f"{emoji} *{tipo} aguardando sua resposta*\n\n"
-            f"*Intencao:* {analise.intencao.value}\n"
-            f"*Resumo:* {analise.resumo}\n\n"
-            f"*Mensagem do comprador:*\n_{interacao.texto}_\n\n"
-            f"*Sugestao do Claude ({resposta.confianca:.0%} confianca):*\n{resposta.texto}\n\n"
-            f"Para responder, envie:\n`/r {interacao.id} sua resposta aqui`"
+            f"{emoji} {tipo} aguardando sua resposta\n\n"
+            f"Intencao: {analise.intencao.value}\n"
+            f"Resumo: {analise.resumo}\n\n"
+            f"Mensagem do comprador:\n{interacao.texto}\n\n"
+            f"Sugestao do Claude ({resposta.confianca:.0%} confianca):\n{resposta.texto}\n\n"
+            f"Para responder:\n/r {interacao.id} sua resposta aqui"
         )
 
         httpx.post(
@@ -39,7 +39,6 @@ class Escalador:
             json={
                 "chat_id": config.TELEGRAM_CHAT_ID,
                 "text": msg,
-                "parse_mode": "Markdown",
             },
             timeout=10,
         )
