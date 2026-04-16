@@ -1,4 +1,5 @@
 """Servidor webhook para receber notificacoes do Mercado Livre em tempo real."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -12,11 +13,22 @@ log = logging.getLogger(__name__)
 orq: Orquestrador | None = None
 
 
+async def _ciclo_startup():
+    """Roda um ciclo imediatamente no startup para pegar perguntas em aberto."""
+    await asyncio.sleep(2)
+    try:
+        log.info("Startup: buscando perguntas em aberto...")
+        orq.ciclo()
+    except Exception as e:
+        log.error(f"Erro no ciclo de startup: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global orq
     orq = Orquestrador()
     log.info("Orquestrador iniciado")
+    asyncio.create_task(_ciclo_startup())
     yield
 
 
