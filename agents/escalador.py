@@ -29,10 +29,9 @@ class Escalador:
         )
 
         emoji = "🚨" if analise.urgente else "❓"
-        item_link = (
-            f"https://mercadolivre.com.br/{interacao.item_id}"
-            if interacao.item_id else ""
-        )
+        # Converte MLB4342729373 -> MLB-4342729373 (formato da URL do produto)
+        item_id_fmt = interacao.item_id.replace("MLB", "MLB-", 1) if interacao.item_id else ""
+        item_link = f"https://produto.mercadolivre.com.br/{item_id_fmt}" if item_id_fmt else ""
 
         msg = (
             f"{emoji} {item_link}\n\n"
