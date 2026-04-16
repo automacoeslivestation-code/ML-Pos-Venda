@@ -1,4 +1,4 @@
-"""Script de autenticacao OAuth ML — roda uma vez pra gerar o refresh token."""
+"""Script de autenticacao OAuth ML — roda para gerar/renovar o token."""
 import os
 import webbrowser
 import httpx
@@ -22,19 +22,19 @@ def main():
         f"?response_type=code"
         f"&client_id={CLIENT_ID}"
         f"&redirect_uri={REDIRECT_URI}"
+        f"&scope=offline_access+read+write"
     )
 
-    print("Abrindo navegador para autorizacao...")
-    print(f"\nURL: {auth_url}\n")
+    print("Acesse essa URL no navegador onde voce esta logado no Mercado Livre:")
+    print(f"\n{auth_url}\n")
     webbrowser.open(auth_url)
 
-    print("Apos autorizar, o ML vai redirecionar para o webhook.site.")
-    print("Copie o valor do parametro 'code' que aparecer na tela do webhook.site.")
-    print("Exemplo: https://webhook.site/...?code=TG-XXXXXX\n")
+    print("Apos autorizar, copie o 'code' que aparecer no webhook.site.")
+    print("Exemplo: code=TG-XXXXXX\n")
 
     code = input("Cole o code aqui: ").strip()
 
-    print("\nTrocando code pelo refresh token...")
+    print("\nTrocando code pelo token...")
     resp = httpx.post(
         "https://api.mercadolibre.com/oauth/token",
         data={
@@ -51,16 +51,22 @@ def main():
         return
 
     data = resp.json()
-    refresh_token = data["refresh_token"]
     seller_id = str(data["user_id"])
+    access_token = data["access_token"]
+    refresh_token = data.get("refresh_token", "")
 
-    set_key(ENV_FILE, "ML_REFRESH_TOKEN", refresh_token)
     set_key(ENV_FILE, "ML_SELLER_ID", seller_id)
+    set_key(ENV_FILE, "ML_ACCESS_TOKEN", access_token)
 
-    print(f"\nSucesso!")
+    if refresh_token:
+        set_key(ENV_FILE, "ML_REFRESH_TOKEN", refresh_token)
+        print(f"\nSucesso! refresh_token obtido — renovacao automatica ativada.")
+    else:
+        print(f"\nSucesso! access_token salvo (valido por 6h).")
+        print("Para renovar, rode este script novamente.")
+
     print(f"ML_SELLER_ID={seller_id}")
-    print(f"ML_REFRESH_TOKEN={refresh_token}")
-    print("\n.env atualizado automaticamente.")
+    print(".env atualizado automaticamente.")
 
 
 if __name__ == "__main__":

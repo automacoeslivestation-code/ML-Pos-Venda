@@ -1,30 +1,46 @@
-"""Cliente HTTP para a API do Mercado Livre com renovacao automatica de token."""
+"""Cliente HTTP para a API do Mercado Livre.
+
+Suporta dois modos:
+- Com ML_REFRESH_TOKEN: renova automaticamente
+- Com ML_ACCESS_TOKEN: usa direto (expira em 6h — rodar auth_ml.py para renovar)
+"""
+import logging
 import httpx
 from config import config
+
+log = logging.getLogger(__name__)
+
+
+class TokenExpiradoError(Exception):
+    """Levantado quando o access_token expirou e nao ha refresh_token disponivel."""
+    pass
 
 
 class MLClient:
     def __init__(self):
-        self._access_token: str | None = None
+        self._access_token: str = config.ML_ACCESS_TOKEN or ""
         self._http = httpx.Client(base_url=config.ML_BASE_URL, timeout=30)
 
     def _renovar_token(self) -> None:
-        resp = self._http.post(
-            "/oauth/token",
-            data={
-                "grant_type": "refresh_token",
-                "client_id": config.ML_CLIENT_ID,
-                "client_secret": config.ML_CLIENT_SECRET,
-                "refresh_token": config.ML_REFRESH_TOKEN,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        self._access_token = data["access_token"]
+        if config.ML_REFRESH_TOKEN:
+            resp = self._http.post(
+                "/oauth/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": config.ML_CLIENT_ID,
+                    "client_secret": config.ML_CLIENT_SECRET,
+                    "refresh_token": config.ML_REFRESH_TOKEN,
+                },
+            )
+            resp.raise_for_status()
+            self._access_token = resp.json()["access_token"]
+        else:
+            raise TokenExpiradoError(
+                "Access token expirado e ML_REFRESH_TOKEN nao configurado. "
+                "Rode: uv run python auth_ml.py"
+            )
 
     def _headers(self) -> dict:
-        if not self._access_token:
-            self._renovar_token()
         return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get(self, path: str, **params) -> dict:
@@ -46,7 +62,6 @@ class MLClient:
     # --- Perguntas ---
 
     def listar_perguntas_novas(self) -> list[dict]:
-        """Retorna perguntas sem resposta do vendedor."""
         data = self._get(
             "/questions/search",
             seller_id=config.ML_SELLER_ID,
@@ -55,14 +70,13 @@ class MLClient:
         return data.get("questions", [])
 
     def responder_pergunta(self, question_id: str, texto: str) -> dict:
-        return self._post(f"/answers", {"question_id": question_id, "text": texto})
+        return self._post("/answers", {"question_id": question_id, "text": texto})
 
     # --- Mensagens pos-venda ---
 
     def listar_conversas_abertas(self) -> list[dict]:
-        """Retorna conversas recentes de pos-venda."""
         data = self._get(
-            f"/messages/packs",
+            "/messages/packs",
             tag="post_sale",
             role="seller",
             status="active",
