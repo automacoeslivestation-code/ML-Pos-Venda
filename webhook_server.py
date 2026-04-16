@@ -63,17 +63,42 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
     return {"received": True}
 
 
+_debounce_tasks: dict[str, asyncio.Task] = {}
+
+
 async def processar_notificacao(payload: dict):
     """Processa a notificacao do ML em background."""
     try:
         topic = payload.get("topic", "")
         resource_id = str(payload.get("resource", "")).split("/")[-1]
 
-        if topic in ("questions", "messages"):
-            log.info(f"Processando {topic} id={resource_id}")
+        if topic == "questions":
+            log.info(f"Processando pergunta id={resource_id}")
             orq.ciclo()
+        elif topic == "messages":
+            log.info(f"Mensagem recebida pack={resource_id} — aguardando 8s")
+            _agendar_processamento_mensagem(resource_id)
     except Exception as e:
         log.error(f"Erro ao processar notificacao: {e}")
+
+
+def _agendar_processamento_mensagem(pack_id: str) -> None:
+    """Debounce: cancela tarefa anterior e agenda nova para daqui 8s."""
+    tarefa_anterior = _debounce_tasks.get(pack_id)
+    if tarefa_anterior and not tarefa_anterior.done():
+        tarefa_anterior.cancel()
+    _debounce_tasks[pack_id] = asyncio.create_task(_processar_mensagem_apos_delay(pack_id))
+
+
+async def _processar_mensagem_apos_delay(pack_id: str) -> None:
+    await asyncio.sleep(8)
+    try:
+        log.info(f"Processando mensagens do pack={pack_id}")
+        orq.processar_mensagem_pack(pack_id)
+    except Exception as e:
+        log.error(f"Erro ao processar pack {pack_id}: {e}")
+    finally:
+        _debounce_tasks.pop(pack_id, None)
 
 
 def run():

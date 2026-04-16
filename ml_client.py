@@ -86,17 +86,7 @@ class MLClient:
 
     # --- Mensagens pos-venda ---
 
-    def listar_conversas_abertas(self) -> list[dict]:
-        data = self._get(
-            "/messages/packs",
-            tag="post_sale",
-            role="seller",
-            status="active",
-            seller_id=config.ML_SELLER_ID,
-        )
-        return data.get("conversations", [])
-
-    def buscar_mensagens_conversa(self, pack_id: str) -> list[dict]:
+    def buscar_mensagens_pack(self, pack_id: str) -> list[dict]:
         data = self._get(f"/messages/packs/{pack_id}/sellers/{config.ML_SELLER_ID}")
         return data.get("messages", [])
 

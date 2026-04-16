@@ -16,6 +16,44 @@ class Escalador:
         self._url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage"
         self._pendentes = Pendentes()
 
+    def escalar_mensagem(self, pack_id: str, nome_comprador: str, texto: str) -> None:
+        """Notifica o humano sobre mensagem(ns) pos-venda de um comprador."""
+        self._pendentes.adicionar(
+            interacao_id=pack_id,
+            texto=texto,
+            intencao="mensagem_pos_venda",
+            tipo="mensagem",
+            nome_comprador=nome_comprador,
+        )
+
+        msg = (
+            f"💬 Mensagem pos-venda\n"
+            f"Comprador: {nome_comprador}\n\n"
+            f"{texto}\n\n"
+            f"/r {pack_id} sua resposta aqui"
+        )
+
+        self._enviar_telegram(msg)
+
+    def _enviar_telegram(self, msg: str) -> None:
+        if len(msg) > 4096:
+            msg = msg[:4093] + "..."
+
+        chat_id = config.TELEGRAM_CHAT_ID
+        try:
+            chat_id = int(chat_id)
+        except (ValueError, TypeError):
+            pass
+
+        log.info(f"Enviando Telegram para chat_id={chat_id!r} (len={len(msg)})")
+        resp = httpx.post(
+            self._url,
+            json={"chat_id": chat_id, "text": msg},
+            timeout=10,
+        )
+        if not resp.is_success:
+            log.error(f"Telegram erro {resp.status_code}: {resp.text}")
+
     def escalar(self, interacao: Interacao, analise: Analise, resposta: Resposta) -> None:
         self._pendentes.adicionar(
             interacao_id=interacao.id,
@@ -39,26 +77,4 @@ class Escalador:
             f"/r {interacao.id} sua resposta aqui"
         )
 
-        # Telegram limita mensagens a 4096 chars
-        if len(msg) > 4096:
-            rodape = f"\n\nPara responder:\n/r {interacao.id} sua resposta aqui"
-            msg = msg[: 4096 - len(rodape)] + rodape
-
-        # chat_id como int quando possivel (evita rejeicao por tipo incorreto)
-        chat_id = config.TELEGRAM_CHAT_ID
-        try:
-            chat_id = int(chat_id)
-        except (ValueError, TypeError):
-            pass
-
-        log.info(f"Enviando Telegram para chat_id={chat_id!r} (len={len(msg)})")
-        resp = httpx.post(
-            self._url,
-            json={
-                "chat_id": chat_id,
-                "text": msg,
-            },
-            timeout=10,
-        )
-        if not resp.is_success:
-            log.error(f"Telegram erro {resp.status_code}: {resp.text}")
+        self._enviar_telegram(msg)
