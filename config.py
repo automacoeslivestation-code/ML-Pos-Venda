@@ -7,7 +7,8 @@ load_dotenv()
 class Config:
     # Anthropic
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    MODEL_RESPONDEDOR: str = "claude-sonnet-4-6"
+    MODEL_ANALISADOR: str = "claude-haiku-4-5-20251001"
+    MODEL_RESPONDEDOR: str = "claude-haiku-4-5-20251001"
 
     # Mercado Livre
     ML_CLIENT_ID: str = os.getenv("ML_CLIENT_ID", "")

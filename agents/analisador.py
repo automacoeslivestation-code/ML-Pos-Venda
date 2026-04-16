@@ -49,7 +49,7 @@ class Analisador:
             contexto = f"Historico:\n{historico_fmt}\n\nUltima mensagem: {interacao.texto}"
 
         msg = self._client.messages.create(
-            model=config.MODEL_RESPONDEDOR,
+            model=config.MODEL_ANALISADOR,
             max_tokens=200,
             system=_PROMPT_SISTEMA,
             messages=[{"role": "user", "content": contexto}],
