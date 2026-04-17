@@ -59,22 +59,23 @@ class Orquestrador:
             self.escalador.escalar(interacao, analise, resposta)
             log.info(f"  Escalado para humano via Telegram")
 
-    def processar_mensagem_pack(self, resource_id: str) -> None:
+    def processar_mensagem_pack(self, resource_id: str) -> bool:
         """Busca mensagens do pack e notifica o humano via Telegram com o texto real.
-        Aceita UUID de mensagem (do webhook) ou pack_id diretamente.
+        Retorna True se encontrou e escalou mensagem do comprador, False caso contrário.
         """
+        pack_id = resource_id
         try:
             # Webhook de mensagens manda UUID hex sem tracos — resolve para pack_id
-            pack_id = resource_id
             try:
                 msg = self.ml.buscar_mensagem_por_uuid(resource_id)
                 pack_id = str(msg.get("pack_id") or resource_id)
                 log.info(f"UUID {resource_id} resolvido para pack_id={pack_id}")
-            except Exception:
-                log.info(f"resource_id {resource_id} nao e UUID, usando como pack_id direto")
+            except Exception as e:
+                log.info(f"resource_id {resource_id} nao e UUID ({e}), usando como pack_id direto")
 
             mensagens = self.ml.buscar_mensagens_pack(pack_id)
-            # Pega a ultima mensagem do comprador
+            log.info(f"pack={pack_id} total de mensagens={len(mensagens)}")
+
             texto = ""
             nome_comprador = ""
             for msg in reversed(mensagens):
@@ -83,18 +84,25 @@ class Orquestrador:
                 if remetente != str(config.ML_SELLER_ID):
                     texto = str(msg.get("text", ""))
                     nome_comprador = remetente
+                    log.info(f"pack={pack_id} mensagem do comprador={remetente}: '{texto[:60]}'")
                     break
 
-            if texto:
-                order_status = self._buscar_status_pedido(pack_id)
-                self.escalador.escalar_mensagem(pack_id, nome_comprador, texto, order_status)
-                log.info(f"Mensagem pack={pack_id} escalada: '{texto[:60]}'")
-            else:
-                self.escalador.escalar_mensagem_simples()
-                log.info(f"Mensagem pack={pack_id} sem texto do comprador, notificacao simples")
+            if not mensagens:
+                log.warning(f"pack={pack_id} sem mensagens na API ainda")
+                return False
+
+            if not texto:
+                log.warning(f"pack={pack_id} sem mensagem do comprador (apenas mensagens do seller)")
+                return False
+
+            order_status = self._buscar_status_pedido(pack_id)
+            self.escalador.escalar_mensagem(pack_id, nome_comprador, texto, order_status)
+            log.info(f"pack={pack_id} escalada com sucesso")
+            return True
+
         except Exception as e:
-            log.error(f"Erro ao processar mensagem pack {pack_id}: {e}")
-            self.escalador.escalar_mensagem_simples()
+            log.error(f"Erro ao processar mensagem pack={pack_id}: {e}")
+            return False
 
     def _buscar_status_pedido(self, pack_id: str) -> str:
         """Retorna status legivel do pedido: Não enviado / Em trânsito / Entregue / Cancelado."""

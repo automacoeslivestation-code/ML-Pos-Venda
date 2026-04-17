@@ -161,13 +161,24 @@ def _agendar_processamento_mensagem(pack_id: str) -> None:
 
 async def _processar_mensagem_apos_delay(pack_id: str) -> None:
     await asyncio.sleep(8)
-    try:
-        log.info(f"Processando mensagens do pack={pack_id}")
-        orq.processar_mensagem_pack(pack_id)
-    except Exception as e:
-        log.error(f"Erro ao processar pack {pack_id}: {e}")
-    finally:
-        _debounce_tasks.pop(pack_id, None)
+    tentativas = 3
+    intervalo = 10  # segundos entre tentativas
+    for tentativa in range(1, tentativas + 1):
+        try:
+            log.info(f"Processando mensagens do pack={pack_id} (tentativa {tentativa}/{tentativas})")
+            sucesso = orq.processar_mensagem_pack(pack_id)
+            if sucesso:
+                break
+            if tentativa < tentativas:
+                log.warning(f"pack={pack_id} sem mensagem, aguardando {intervalo}s antes de tentar novamente")
+                await asyncio.sleep(intervalo)
+            else:
+                log.error(f"pack={pack_id} sem mensagem apos {tentativas} tentativas, ignorando")
+        except Exception as e:
+            log.error(f"Erro ao processar pack={pack_id} tentativa {tentativa}: {e}")
+            if tentativa < tentativas:
+                await asyncio.sleep(intervalo)
+    _debounce_tasks.pop(pack_id, None)
 
 
 def _processar_order(order_id: str) -> None:
