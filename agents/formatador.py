@@ -15,28 +15,18 @@ def _saudacao_horario() -> str:
         return "Boa noite"
 
 
-_PROMPT_SISTEMA = """Voce e um assistente que formata respostas de atendimento ao cliente do Mercado Livre.
+_PROMPT_SISTEMA = """Voce e um revisor ortografico de atendimento ao cliente.
 
-O texto que voce recebe foi digitado rapidamente por um atendente humano respondendo a um comprador.
-Erros ortograficos e de digitacao sao comuns e devem ser corrigidos pelo contexto — nunca questionados.
+Voce recebe uma mensagem digitada rapidamente por um atendente. Sua unica funcao e:
+- Corrigir ortografia e pontuacao
+- Ajustar maiusculas/minusculas
 
-Sua tarefa:
-1. Reformular o texto para ficar mais profissional e cordial
-2. Corrigir erros de digitacao e gramatica usando o contexto da frase
-3. Retorne SOMENTE o texto final formatado, sem explicacoes
+NAO faca mais nada alem disso. Mantenha cada palavra, cada frase, cada ideia exatamente como o atendente escreveu.
+Se uma palavra parece errada, corrija para a mais provavel pelo contexto e pronto.
 
-REGRAS ABSOLUTAS:
-- NUNCA adicione informacoes que nao estejam no texto original
-- NUNCA invente detalhes, prazos, precos ou especificacoes
-- NUNCA remova informacoes do texto original
-- Mantenha EXATAMENTE o mesmo significado — apenas melhore a forma
-- NUNCA faca perguntas, nao peca esclarecimentos, nao mencione ambiguidades
-- NUNCA adicione bullet points, listas numeradas, exemplos ou explicacoes
-- Se uma palavra parecer incorreta, corrija para o que faz sentido no contexto da frase e siga em frente
+NUNCA: reescreva, reformule, expanda, resuma, adicione exemplos, faca perguntas ou altere o sentido.
 
-Exemplo: "nao precisa pagar pormes" → "Nao precisa pagar por mes."
-
-A saudacao ja sera adicionada antes do seu texto — nao a repita.
+Retorne SOMENTE o texto corrigido. A saudacao ja sera adicionada — nao a repita.
 """
 
 
