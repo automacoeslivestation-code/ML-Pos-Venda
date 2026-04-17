@@ -87,18 +87,34 @@ class MLClient:
         return data.get("paging", {}).get("total", 0)
 
     def listar_ship_ids_por_status(self, shipping_status: str) -> list[tuple[str, str]]:
-        """Retorna lista de (order_id, ship_id) para o status de envio dado."""
-        params = {
-            "seller": config.ML_SELLER_ID,
-            "shipping.status": shipping_status,
-            "limit": 200,
-        }
-        data = self._get("/orders/search", **params)
-        return [
-            (str(o["id"]), str(o["shipping"]["id"]))
-            for o in data.get("results", [])
-            if o.get("shipping", {}).get("id")
-        ]
+        """Retorna lista de (order_id, ship_id) para o status de envio dado (paginado)."""
+        resultados = []
+        offset = 0
+        limit = 50
+        while True:
+            params = {
+                "seller": config.ML_SELLER_ID,
+                "shipping.status": shipping_status,
+                "limit": limit,
+                "offset": offset,
+            }
+            resp = self._http.get("/orders/search", headers=self._headers(), params=params)
+            if resp.status_code == 401:
+                self._renovar_token()
+                resp = self._http.get("/orders/search", headers=self._headers(), params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            pagina = [
+                (str(o["id"]), str(o["shipping"]["id"]))
+                for o in data.get("results", [])
+                if o.get("shipping", {}).get("id")
+            ]
+            resultados.extend(pagina)
+            total = data.get("paging", {}).get("total", 0)
+            offset += limit
+            if offset >= total:
+                break
+        return resultados
 
     def buscar_logistic_type(self, ship_id: str) -> str:
         """Retorna o logistic_type do envio (sem x-format-new)."""
