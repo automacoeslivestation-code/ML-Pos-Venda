@@ -19,10 +19,13 @@ class Enviador:
             return
         try:
             pedido = self._ml.buscar_pedido(order_id)
+            pack_id = pedido.get("pack_id")
+            if not pack_id:
+                log.info(f"Compra {order_id} sem pack_id ainda — follow-up sera enviado no evento de envio")
+                return
             dados = self._extrair_dados_pedido(pedido)
-            pack_id = str(pedido.get("pack_id") or order_id)
             mensagem = self._gerador.gerar("compra", dados)
-            self._ml.enviar_followup(pack_id, mensagem)
+            self._ml.enviar_followup(str(pack_id), mensagem)
             self._enviados.marcar(order_id, "compra")
             log.info(f"Mensagem de compra enviada para order={order_id}")
         except Exception as e:
