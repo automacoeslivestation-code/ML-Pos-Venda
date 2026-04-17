@@ -293,6 +293,24 @@ O `to.user_id` deve ser o **agent_id do Brasil: `3037675074`** (não o user_id d
 
 ---
 
+## Limitação: cap_available
+
+Cada pedido tem uma cota de **1 mensagem** por `option_id`. Se tentar enviar quando `cap_available = 0`, recebe erro:
+
+```json
+{ "error": "You are not allowed to execute the option OTHER again." }
+```
+
+O sistema captura esse erro via try/except e registra no log, sem travar. Para conferir antes de enviar:
+
+```
+GET /messages/action_guide/packs/{pack_id}/caps_available?tag=post_sale
+```
+
+Na prática, com 3 eventos distintos (compra, envio, entrega) e 1 cap para `OTHER`, só é possível enviar **1 mensagem proativa por pedido** — não as 3. Para os demais eventos usar `SEND_INVOICE_LINK` ou aguardar o comprador iniciar a conversa.
+
+---
+
 ## Deduplicação
 
 O ML não envia o mesmo webhook duas vezes para o mesmo evento em condições normais.

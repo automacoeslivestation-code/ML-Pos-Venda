@@ -13,8 +13,6 @@ from agents.orquestrador import Orquestrador
 from agents.enviador import Enviador
 from railway import atualizar_variavel
 
-ML_REDIRECT_URI = "https://ml-pos-venda-production-3f78.up.railway.app/callback"
-
 log = logging.getLogger(__name__)
 
 orq: Orquestrador | None = None
@@ -79,7 +77,7 @@ async def ml_callback(request: Request):
             "client_id": config.ML_CLIENT_ID,
             "client_secret": config.ML_CLIENT_SECRET,
             "code": code,
-            "redirect_uri": ML_REDIRECT_URI,
+            "redirect_uri": config.ML_REDIRECT_URI,
         },
         timeout=15,
     )

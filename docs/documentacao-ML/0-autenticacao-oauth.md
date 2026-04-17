@@ -221,7 +221,27 @@ Para o sistema de pós-venda e follow-up, os três são necessários.
 
 ---
 
-## 7. Resumo dos endpoints
+## 7. Variáveis de ambiente necessárias
+
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `ANTHROPIC_API_KEY` | Sim | Chave da API Anthropic (Claude) |
+| `ML_CLIENT_ID` | Sim | Client ID do app no ML Developer |
+| `ML_CLIENT_SECRET` | Sim | Client Secret do app no ML Developer |
+| `ML_SELLER_ID` | Sim | Seu user_id como vendedor no ML |
+| `ML_REDIRECT_URI` | Sim | URL do callback OAuth (ex: `https://seuapp.railway.app/callback`) |
+| `ML_REFRESH_TOKEN` | Sim* | Token de renovação — obtido no primeiro OAuth |
+| `ML_ACCESS_TOKEN` | Sim* | Token de acesso — gerado pelo OAuth ou refresh |
+| `TELEGRAM_BOT_TOKEN` | Sim | Token do bot do Telegram |
+| `TELEGRAM_CHAT_ID` | Sim | Seu chat_id no Telegram (só esse pode usar o bot) |
+| `CONFIANCA_MINIMA` | Não | Threshold de confiança para auto-resposta (padrão: `0.75`) |
+| `POLLING_INTERVAL_SEGUNDOS` | Não | Intervalo de polling de perguntas em segundos (padrão: `60`) |
+
+*Precisa de `ML_REFRESH_TOKEN` **ou** `ML_ACCESS_TOKEN`. Com refresh_token o sistema renova sozinho.
+
+---
+
+## 8. Resumo dos endpoints
 
 | Operação | Endpoint | Método |
 |----------|----------|--------|

@@ -121,6 +121,8 @@ class MLClient:
         return data.get("questions", [])
 
     def responder_pergunta(self, question_id: str, texto: str) -> dict:
+        if len(texto) > 2000:
+            texto = texto[:1997] + "..."
         return self._post("/answers", {"question_id": question_id, "text": texto})
 
     # --- Mensagens pos-venda ---

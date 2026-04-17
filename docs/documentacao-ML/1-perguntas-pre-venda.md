@@ -207,6 +207,17 @@ Content-Type: application/json
 
 ---
 
+## Como as perguntas chegam ao sistema
+
+O sistema usa **dois mecanismos** para não perder perguntas:
+
+1. **Webhook** (`questions`) — notificação em tempo real quando nova pergunta chega
+2. **Polling** — busca ativa a cada `POLLING_INTERVAL_SEGUNDOS` (padrão 60s) para pegar perguntas que vieram antes do serviço iniciar
+
+As mensagens pós-venda de compradores que já compraram chegam **apenas por webhook** (`messages`) — não há polling para elas.
+
+---
+
 ## Rate limit
 
 - **1500 requisições por minuto** por seller autenticado

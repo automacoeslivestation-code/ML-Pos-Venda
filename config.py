@@ -17,6 +17,7 @@ class Config:
     ML_ACCESS_TOKEN: str = os.getenv("ML_ACCESS_TOKEN", "")     # usado se nao tiver refresh
     ML_SELLER_ID: str = os.getenv("ML_SELLER_ID", "")
     ML_BASE_URL: str = "https://api.mercadolibre.com"
+    ML_REDIRECT_URI: str = os.getenv("ML_REDIRECT_URI", "")
 
     # Telegram
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
