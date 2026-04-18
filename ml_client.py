@@ -142,14 +142,14 @@ class MLClient:
         return resp.json().get("paging", {}).get("total", 0)
 
     def contar_entregues_no_mes(self) -> int:
-        """Conta pedidos entregues cujo pedido foi criado no mês atual."""
+        """Conta pedidos finalizados (entregues) no mês atual."""
         from datetime import datetime
         hoje = datetime.now()
-        desde = f"{hoje.year}-{hoje.month:02d}-01T00:00:00.000-0300"
+        desde = f"{hoje.year}-{hoje.month:02d}-01T00:00:00.000-03:00"
         params = {
             "seller": config.ML_SELLER_ID,
             "shipping.status": "delivered",
-            "date_created.from": desde,
+            "order.date_closed.from": desde,
         }
         resp = self._http.get("/orders/search", headers=self._headers(), params=params)
         if resp.status_code == 401:
