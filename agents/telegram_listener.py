@@ -132,7 +132,7 @@ class TelegramListener:
                 if item_id:
                     item_id_fmt = item_id.replace("MLB", "MLB-", 1)
                     link = f"https://produto.mercadolivre.com.br/{item_id_fmt}"
-                    cabecalho = f"❓ {link}"
+                    cabecalho = f"❓ Pergunta | {link}"
                 else:
                     cabecalho = "❓ Pergunta"
             linhas.append("——————————————")

@@ -29,6 +29,7 @@ class Pendentes:
     def adicionar(self, interacao_id: str, texto: str, intencao: str, tipo: str,
                   nome_comprador: str = "", titulo_item: str = "", item_id: str = "",
                   order_status: str = "", sugestao: str = "", confianca: float = 0.0) -> int:
+        self._dados = self._carregar()
         codigo = self._proximo_codigo()
         self._dados[interacao_id] = {
             "codigo": codigo,
