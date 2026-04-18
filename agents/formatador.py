@@ -36,11 +36,7 @@ class Formatador:
 
     def formatar(self, texto_bruto: str, nome_comprador: str = "") -> str:
         saudacao = _saudacao_horario()
-
-        if nome_comprador:
-            abertura = f"{saudacao}, {nome_comprador}! "
-        else:
-            abertura = f"{saudacao}! "
+        abertura = f"{saudacao}! "
 
         msg = self._client.messages.create(
             model=config.MODEL_RESPONDEDOR,
