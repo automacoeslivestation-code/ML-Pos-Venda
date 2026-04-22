@@ -255,8 +255,8 @@ class MLClient:
                     available = item.get("cap_available", 0) > 0
                     log.info(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} cap_available={item.get('cap_available')} disponivel={available}")
                     return available
-            log.warning(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} nao encontrado na resposta — assumindo disponivel")
-            return True
+            log.warning(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} nao encontrado na resposta — indisponivel")
+            return False
         except Exception as e:
             log.warning(f"buscar_cap_disponivel pack={pack_id} erro={e} — assumindo disponivel")
             return True
