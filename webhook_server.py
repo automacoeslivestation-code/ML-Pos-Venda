@@ -120,6 +120,9 @@ async def ml_callback(request: Request):
     )
 
 
+_notificacoes_vistas: dict[str, float] = {}
+_debounce_tasks: dict[str, asyncio.Task] = {}
+
 @app.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     """Recebe notificacoes do ML e processa em background."""
@@ -138,13 +141,9 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             log.info(f"Notificacao duplicada ignorada: _id={notif_id}")
             return {"received": True}
         _notificacoes_vistas[notif_id] = agora
-    log.info(f"Webhook recebido: {payload}")
+    log.info(f"Webhook recebido: topic={payload.get("topic")} resource={payload.get("resource")} id={payload.get("_id","")[:8]}")
     background_tasks.add_task(processar_notificacao, payload)
     return {"received": True}
-
-
-_notificacoes_vistas: dict[str, float] = {}
-_debounce_tasks: dict[str, asyncio.Task] = {}
 
 
 async def processar_notificacao(payload: dict):

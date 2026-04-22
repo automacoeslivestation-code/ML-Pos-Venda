@@ -55,14 +55,6 @@ class Escalador:
         if not resp.is_success:
             log.error(f"Telegram erro {resp.status_code}: {resp.text}")
 
-    def escalar_mensagem_simples(self) -> None:
-        """Notifica o humano que chegou uma mensagem de comprador, sem tentar buscar o conteudo via API."""
-        msg = (
-            "💬 Nova mensagem de comprador\n"
-            "Ver no ML: https://www.mercadolivre.com.br/mensagens"
-        )
-        self._enviar_telegram(msg)
-
     def escalar(self, interacao: Interacao, analise: Analise, resposta: Resposta) -> None:
         codigo = self._pendentes.adicionar(
             interacao_id=interacao.id,

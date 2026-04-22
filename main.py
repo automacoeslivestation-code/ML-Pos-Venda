@@ -6,6 +6,10 @@ Modos:
   (padrao)   inicia servidor webhook (recomendado para Railway)
 """
 import sys
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
 from config import config
 from agents.orquestrador import Orquestrador
 

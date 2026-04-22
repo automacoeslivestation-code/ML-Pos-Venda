@@ -11,7 +11,6 @@ from agents.respondedor import Respondedor
 from agents.escalador import Escalador
 from agents.telegram_listener import TelegramListener
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 

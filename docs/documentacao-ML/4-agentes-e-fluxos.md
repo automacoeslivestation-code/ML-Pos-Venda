@@ -184,13 +184,12 @@ CONFIANÇA: 0.92   ← NÃO funciona (acento na letra A quebra o parsing)
 
 **Função:** Notifica o humano no Telegram e salva a interação em pendentes.
 
-**Três cenários:**
+**Dois métodos:**
 
 | Método | Quando | Mensagem enviada |
 |--------|--------|-----------------|
 | `escalar()` | Confiança baixa em pergunta | `❓ link-do-produto\n\nComprador: <texto>\n\n/r <id>` |
 | `escalar_mensagem()` | Mensagem pós-venda recebida | `💬 Pós-venda \| Em trânsito\n\nComprador: <texto>\n\n/r <pack_id>` |
-| `escalar_mensagem_simples()` | Erro ao buscar conteúdo da mensagem | `💬 Nova mensagem de comprador\nVer no ML: <link>` |
 
 **Formato do link de produto:** `MLB4342729373` → `MLB-4342729373` → `https://produto.mercadolivre.com.br/MLB-4342729373`
 
