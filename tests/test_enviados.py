@@ -2,7 +2,6 @@
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import patch
 
 from agents.enviados import Enviados
 
@@ -15,38 +14,38 @@ def enviados_tmp(tmp_path, monkeypatch):
     return Enviados(), arquivo_tmp
 
 
-def test_ja_enviou_retorna_false_quando_vazio(enviados_tmp):
+def test_nao_enviado_retorna_false_quando_vazio(enviados_tmp):
     enviados, _ = enviados_tmp
-    assert enviados.ja_enviou("123", "compra") is False
+    assert enviados.verificar_e_marcar("123", "compra") is False
 
 
-def test_marcar_persiste_no_arquivo(enviados_tmp):
+def test_verificar_e_marcar_persiste_no_arquivo(enviados_tmp):
     enviados, arquivo = enviados_tmp
-    enviados.marcar("123", "compra")
+    enviados.verificar_e_marcar("123", "compra")
     assert arquivo.exists()
     dados = json.loads(arquivo.read_text(encoding="utf-8"))
     assert "123_compra" in dados
 
 
-def test_ja_enviou_retorna_true_apos_marcar(enviados_tmp):
+def test_verificar_e_marcar_retorna_true_na_segunda_chamada(enviados_tmp):
     enviados, _ = enviados_tmp
-    enviados.marcar("456", "envio")
-    assert enviados.ja_enviou("456", "envio") is True
+    enviados.verificar_e_marcar("456", "envio")
+    assert enviados.verificar_e_marcar("456", "envio") is True
 
 
 def test_eventos_distintos_nao_se_confundem(enviados_tmp):
     enviados, _ = enviados_tmp
-    enviados.marcar("789", "compra")
-    assert enviados.ja_enviou("789", "compra") is True
-    assert enviados.ja_enviou("789", "entrega") is False
-    assert enviados.ja_enviou("000", "compra") is False
+    enviados.verificar_e_marcar("789", "compra")
+    assert enviados.verificar_e_marcar("789", "compra") is True
+    assert enviados.verificar_e_marcar("789", "entrega") is False
+    assert enviados.verificar_e_marcar("000", "compra") is False
 
 
 def test_marcar_multiplos_eventos(enviados_tmp):
     enviados, arquivo = enviados_tmp
-    enviados.marcar("1", "compra")
-    enviados.marcar("1", "envio")
-    enviados.marcar("1", "entrega")
+    enviados.verificar_e_marcar("1", "compra")
+    enviados.verificar_e_marcar("1", "envio")
+    enviados.verificar_e_marcar("1", "entrega")
     dados = json.loads(arquivo.read_text(encoding="utf-8"))
     assert len(dados) == 3
     assert "1_compra" in dados
@@ -60,7 +59,7 @@ def test_carregar_arquivo_json_corrompido_retorna_vazio(tmp_path, monkeypatch):
     monkeypatch.setattr("agents.enviados.ARQUIVO", arquivo_tmp)
     enviados = Enviados()
     # Nao deve lancar excecao, deve retornar False
-    assert enviados.ja_enviou("x", "y") is False
+    assert enviados.verificar_e_marcar("x", "y") is False
 
 
 def test_verificar_e_marcar_retorna_false_e_marca_na_primeira_chamada(enviados_tmp):
@@ -71,7 +70,7 @@ def test_verificar_e_marcar_retorna_false_e_marca_na_primeira_chamada(enviados_t
     assert "abc_compra" in dados
 
 
-def test_verificar_e_marcar_retorna_true_na_segunda_chamada(enviados_tmp):
+def test_verificar_e_marcar_retorna_true_na_segunda_chamada_2(enviados_tmp):
     enviados, _ = enviados_tmp
     enviados.verificar_e_marcar("abc", "compra")
     resultado = enviados.verificar_e_marcar("abc", "compra")

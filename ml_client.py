@@ -81,11 +81,13 @@ class MLClient:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._access_token}"}
 
-    def _get(self, path: str, **params) -> dict:
-        resp = self._http.get(path, headers=self._headers(), params=params)
+    def _get(self, path: str, extra_headers: dict | None = None, **params) -> dict:
+        headers = {**self._headers(), **(extra_headers or {})}
+        resp = self._http.get(path, headers=headers, params=params or None)
         if resp.status_code == 401:
             self._renovar_token()
-            resp = self._http.get(path, headers=self._headers(), params=params)
+            headers = {**self._headers(), **(extra_headers or {})}
+            resp = self._http.get(path, headers=headers, params=params or None)
         resp.raise_for_status()
         return resp.json()
 
@@ -123,18 +125,15 @@ class MLClient:
         offset = 0
         limit = 50
         while True:
-            params = {
-                "seller": config.ML_SELLER_ID,
-                "shipping.status": shipping_status,
-                "limit": limit,
-                "offset": offset,
-            }
-            resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-            if resp.status_code == 401:
-                self._renovar_token()
-                resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-            resp.raise_for_status()
-            data = resp.json()
+            data = self._get(
+                "/orders/search",
+                **{
+                    "seller": config.ML_SELLER_ID,
+                    "shipping.status": shipping_status,
+                    "limit": limit,
+                    "offset": offset,
+                }
+            )
             pagina = [
                 (str(o["id"]), str(o["shipping"]["id"]))
                 for o in data.get("results", [])
@@ -150,58 +149,40 @@ class MLClient:
     def buscar_logistic_type(self, ship_id: str) -> str:
         """Retorna o logistic_type do envio (sem x-format-new)."""
         try:
-            resp = self._http.get(f"/shipments/{ship_id}", headers=self._headers())
-            if resp.status_code == 401:
-                self._renovar_token()
-                resp = self._http.get(f"/shipments/{ship_id}", headers=self._headers())
-            return resp.json().get("logistic_type") or "outros"
+            data = self._get(f"/shipments/{ship_id}")
+            return data.get("logistic_type") or "outros"
         except Exception:
             return "outros"
 
     def contar_pedidos_por_envio(self, shipping_status: str) -> int:
         """Conta pedidos pelo status de envio (ex: ready_to_ship, shipped)."""
-        params = {
-            "seller": config.ML_SELLER_ID,
-            "order.status": "paid",
-            "shipping.status": shipping_status,
-        }
-        resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-        if resp.status_code == 401:
-            self._renovar_token()
-            resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-        resp.raise_for_status()
-        return resp.json().get("paging", {}).get("total", 0)
+        data = self._get(
+            "/orders/search",
+            **{
+                "seller": config.ML_SELLER_ID,
+                "order.status": "paid",
+                "shipping.status": shipping_status,
+            }
+        )
+        return data.get("paging", {}).get("total", 0)
 
     def contar_entregues_no_mes(self) -> int:
         """Conta pedidos finalizados (entregues) no mês atual."""
         from datetime import datetime
         hoje = datetime.now()
         desde = f"{hoje.year}-{hoje.month:02d}-01T00:00:00.000-03:00"
-        params = {
-            "seller": config.ML_SELLER_ID,
-            "shipping.status": "delivered",
-            "order.date_closed.from": desde,
-        }
-        resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-        if resp.status_code == 401:
-            self._renovar_token()
-            resp = self._http.get("/orders/search", headers=self._headers(), params=params)
-        resp.raise_for_status()
-        return resp.json().get("paging", {}).get("total", 0)
+        data = self._get(
+            "/orders/search",
+            **{
+                "seller": config.ML_SELLER_ID,
+                "shipping.status": "delivered",
+                "order.date_closed.from": desde,
+            }
+        )
+        return data.get("paging", {}).get("total", 0)
 
     def buscar_envio(self, shipment_id: str) -> dict:
-        resp = self._http.get(
-            f"/shipments/{shipment_id}",
-            headers={**self._headers(), "x-format-new": "true"},
-        )
-        if resp.status_code == 401:
-            self._renovar_token()
-            resp = self._http.get(
-                f"/shipments/{shipment_id}",
-                headers={**self._headers(), "x-format-new": "true"},
-            )
-        resp.raise_for_status()
-        return resp.json()
+        return self._get(f"/shipments/{shipment_id}", extra_headers={"x-format-new": "true"})
 
     def buscar_order_id_por_shipment(self, shipment_id: str) -> str:
         """Busca order_id via GET /shipments/{id}/items.
@@ -210,18 +191,7 @@ class MLClient:
         Retorna o order_id do primeiro item, ou string vazia se nao encontrado.
         """
         try:
-            resp = self._http.get(
-                f"/shipments/{shipment_id}/items",
-                headers=self._headers(),
-            )
-            if resp.status_code == 401:
-                self._renovar_token()
-                resp = self._http.get(
-                    f"/shipments/{shipment_id}/items",
-                    headers=self._headers(),
-                )
-            resp.raise_for_status()
-            data = resp.json()
+            data = self._get(f"/shipments/{shipment_id}/items")
             items = data if isinstance(data, list) else data.get("results", [])
             if items:
                 order_id = items[0].get("order_id")
@@ -316,10 +286,6 @@ class MLClient:
 
     def buscar_mensagem_por_uuid(self, uuid: str) -> dict:
         return self._get(f"/messages/{uuid}", tag="post_sale")
-
-    def listar_nao_lidas(self) -> list[dict]:
-        data = self._get("/messages/unread", tag="post_sale", role="seller")
-        return data.get("results", [])
 
     def buscar_mensagens_pack(self, pack_id: str) -> list[dict]:
         data = self._get(

@@ -25,20 +25,12 @@ class Enviados:
             ARQUIVO.write_text(json.dumps(dados, indent=2), encoding="utf-8")
             return False
 
-    def ja_enviou(self, order_id: str, evento: str) -> bool:
-        dados = self._carregar()
-        return f"{order_id}_{evento}" in dados
-
-    def marcar(self, order_id: str, evento: str) -> None:
-        dados = self._carregar()
-        dados[f"{order_id}_{evento}"] = True
-        ARQUIVO.parent.mkdir(exist_ok=True)
-        ARQUIVO.write_text(json.dumps(dados, indent=2), encoding="utf-8")
 
     def _carregar(self) -> dict:
         if ARQUIVO.exists():
             try:
                 return json.loads(ARQUIVO.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as e:
+                log.error(f"Erro ao carregar {ARQUIVO}: {e} — iniciando com dict vazio")
                 return {}
         return {}
