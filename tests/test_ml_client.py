@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from ml_client import MLClient
+from ml_client import MLClient, CapStatus
 
 
 def _make_client():
@@ -120,7 +120,7 @@ def test_buscar_cap_disponivel_renova_token_em_401():
             result = cliente.buscar_cap_disponivel("pack123", "OTHER")
 
     mock_renovar.assert_called_once()
-    assert result is True
+    assert result == CapStatus.DISPONIVEL
 
 
 # --- Testes de truncamento de texto ---
@@ -194,7 +194,7 @@ def test_buscar_cap_disponivel_envia_tag_post_sale():
     with patch.object(cliente._http, "get", return_value=resp_ok) as mock_get:
         result = cliente.buscar_cap_disponivel("pack999", "OTHER")
 
-    assert result is True
+    assert result == CapStatus.DISPONIVEL
     call_kwargs = mock_get.call_args.kwargs
     assert call_kwargs.get("params", {}).get("tag") == "post_sale"
 
@@ -236,3 +236,69 @@ def test_buscar_nome_comprador_limpa_sufixo_numerico_do_nickname():
         result = cliente.buscar_nome_comprador("123", pedido)
 
     assert result == "Grasiellyclara"
+
+
+# --- Testes de 403 em buscar_cap_disponivel ---
+
+def test_buscar_cap_disponivel_403_blocked_retorna_conversa_bloqueada():
+    """buscar_cap_disponivel deve retornar CONVERSA_BLOQUEADA quando 403 com 'blocked' no body."""
+    cliente = _make_client()
+    resp_403 = MagicMock()
+    resp_403.status_code = 403
+    resp_403.text = '{"message": "conversation blocked", "status": 403}'
+
+    with patch.object(cliente._http, "get", return_value=resp_403):
+        result = cliente.buscar_cap_disponivel("pack_bloqueado", "OTHER")
+
+    assert result == CapStatus.CONVERSA_BLOQUEADA
+
+
+def test_buscar_cap_disponivel_403_sem_blocked_retorna_acesso_negado():
+    """buscar_cap_disponivel deve retornar ACESSO_NEGADO quando 403 sem 'blocked' no body."""
+    cliente = _make_client()
+    resp_403 = MagicMock()
+    resp_403.status_code = 403
+    resp_403.text = '{"message": "Forbidden", "status": 403}'
+
+    with patch.object(cliente._http, "get", return_value=resp_403):
+        result = cliente.buscar_cap_disponivel("pack_negado", "OTHER")
+
+    assert result == CapStatus.ACESSO_NEGADO
+
+
+def test_buscar_cap_disponivel_200_cap_zero_retorna_indisponivel():
+    """buscar_cap_disponivel deve retornar INDISPONIVEL quando cap_available=0."""
+    cliente = _make_client()
+    resp_ok = MagicMock()
+    resp_ok.status_code = 200
+    resp_ok.json.return_value = [{"option_id": "OTHER", "cap_available": 0}]
+
+    with patch.object(cliente._http, "get", return_value=resp_ok):
+        result = cliente.buscar_cap_disponivel("pack_zero", "OTHER")
+
+    assert result == CapStatus.INDISPONIVEL
+
+
+def test_buscar_cap_disponivel_200_option_id_ausente_retorna_indisponivel():
+    """buscar_cap_disponivel deve retornar INDISPONIVEL quando option_id nao esta na resposta."""
+    cliente = _make_client()
+    resp_ok = MagicMock()
+    resp_ok.status_code = 200
+    resp_ok.json.return_value = [{"option_id": "SEND_INVOICE_LINK", "cap_available": 2}]
+
+    with patch.object(cliente._http, "get", return_value=resp_ok):
+        result = cliente.buscar_cap_disponivel("pack_sem_other", "OTHER")
+
+    assert result == CapStatus.INDISPONIVEL
+
+
+def test_buscar_cap_disponivel_500_retorna_disponivel_fail_open():
+    """buscar_cap_disponivel deve retornar DISPONIVEL (fail-open) em erros 500."""
+    cliente = _make_client()
+    resp_500 = MagicMock()
+    resp_500.status_code = 500
+
+    with patch.object(cliente._http, "get", return_value=resp_500):
+        result = cliente.buscar_cap_disponivel("pack_erro", "OTHER")
+
+    assert result == CapStatus.DISPONIVEL

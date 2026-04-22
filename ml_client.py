@@ -7,12 +7,20 @@ Suporta dois modos:
 import json
 import logging
 import os
+from enum import Enum
 import httpx
 from config import config
 from railway import atualizar_variavel
 
 log = logging.getLogger(__name__)
 
+
+class CapStatus(Enum):
+    """Status retornado por buscar_cap_disponivel."""
+    DISPONIVEL = "disponivel"
+    INDISPONIVEL = "indisponivel"       # array vazio ou cap=0
+    CONVERSA_BLOQUEADA = "bloqueada"   # 403 com "blocked" no body
+    ACESSO_NEGADO = "negado"           # 403 sem "blocked"
 
 
 _TOKEN_BACKUP_PATH = os.path.join(
@@ -228,10 +236,17 @@ class MLClient:
     # ID do agente de mensageria ML para Brasil (obrigatorio desde fev/2026)
     _ML_AGENT_ID = "3037675074"
 
-    def buscar_cap_disponivel(self, pack_id: str, option_id: str = "OTHER") -> bool:
-        """Verifica se o CAP esta disponivel para o pack e option_id informado.
-        Endpoint: GET /messages/action_guide/packs/{pack_id}/caps_available
-        Retorna True em caso de erro para nao bloquear o fluxo.
+    def buscar_cap_disponivel(self, pack_id: str, option_id: str = "OTHER") -> CapStatus:
+        """Verifica disponibilidade do CAP para o pack e option_id informado.
+
+        Endpoint: GET /messages/action_guide/packs/{pack_id}/caps_available?tag=post_sale
+
+        Retornos:
+        - DISPONIVEL: 200 + option_id encontrado com cap_available > 0
+        - INDISPONIVEL: 200 + option_id nao encontrado ou cap_available = 0
+        - CONVERSA_BLOQUEADA: 403 com "blocked" no body (fallback convencional possivel)
+        - ACESSO_NEGADO: 403 sem "blocked" (pack inacessivel, POST falharia igual)
+        - DISPONIVEL: outros erros (fail-open para nao bloquear o fluxo)
         """
         try:
             resp = self._http.get(
@@ -246,20 +261,30 @@ class MLClient:
                     headers=self._headers(),
                     params={"tag": "post_sale"},
                 )
+            if resp.status_code == 403:
+                body_text = resp.text.lower()
+                if "blocked" in body_text:
+                    log.info(f"buscar_cap_disponivel pack={pack_id} — conversa bloqueada (403 blocked)")
+                    return CapStatus.CONVERSA_BLOQUEADA
+                log.warning(f"buscar_cap_disponivel pack={pack_id} — acesso negado (403 sem blocked)")
+                return CapStatus.ACESSO_NEGADO
             if resp.status_code != 200:
-                log.warning(f"buscar_cap_disponivel pack={pack_id} status={resp.status_code} — assumindo disponivel")
-                return True
+                log.warning(f"buscar_cap_disponivel pack={pack_id} status={resp.status_code} — assumindo disponivel (fail-open)")
+                return CapStatus.DISPONIVEL
             caps = resp.json()
             for item in caps:
                 if item.get("option_id") == option_id:
-                    available = item.get("cap_available", 0) > 0
-                    log.info(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} cap_available={item.get('cap_available')} disponivel={available}")
-                    return available
+                    cap_val = item.get("cap_available", 0)
+                    if cap_val > 0:
+                        log.info(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} cap_available={cap_val} — disponivel")
+                        return CapStatus.DISPONIVEL
+                    log.info(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} cap_available={cap_val} — indisponivel")
+                    return CapStatus.INDISPONIVEL
             log.warning(f"buscar_cap_disponivel pack={pack_id} option_id={option_id} nao encontrado na resposta — indisponivel")
-            return False
+            return CapStatus.INDISPONIVEL
         except Exception as e:
-            log.warning(f"buscar_cap_disponivel pack={pack_id} erro={e} — assumindo disponivel")
-            return True
+            log.warning(f"buscar_cap_disponivel pack={pack_id} erro={e} — assumindo disponivel (fail-open)")
+            return CapStatus.DISPONIVEL
 
     def enviar_followup(self, pack_id: str, texto: str, option_id: str = "OTHER") -> dict:
         """Envia mensagem proativa de follow-up (compra/envio/entrega) via Action Guide."""

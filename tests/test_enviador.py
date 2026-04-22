@@ -2,6 +2,7 @@
 from unittest.mock import MagicMock
 
 from agents.enviador import Enviador
+from ml_client import CapStatus
 
 
 def _make_enviador(pack_id, order_id, first_name="Comprador"):
@@ -17,7 +18,7 @@ def _make_enviador(pack_id, order_id, first_name="Comprador"):
         "buyer": {"nickname": "COMPRADOR_TESTE", "first_name": first_name},
         "order_items": [{"item": {"title": "Camera de Seguranca"}}],
     }
-    env._ml.buscar_cap_disponivel.return_value = True
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.DISPONIVEL
     env._ml.buscar_nome_comprador.return_value = first_name or "Comprador"
     env._gerador.gerar.return_value = "Mensagem teste"
     return env
@@ -64,7 +65,7 @@ def test_processar_compra_ja_enviado_nao_reenvia():
 def test_processar_entrega_other_disponivel_usa_other():
     """processar_entrega usa OTHER quando OTHER esta disponivel."""
     env = _make_enviador(pack_id=888, order_id="777")
-    env._ml.buscar_cap_disponivel.side_effect = lambda pack, option_id="OTHER": True
+    env._ml.buscar_cap_disponivel.side_effect = lambda pack, option_id="OTHER": CapStatus.DISPONIVEL
     env.processar_entrega("777")
     env._ml.enviar_followup.assert_called_once()
     _, kwargs = env._ml.enviar_followup.call_args
@@ -75,7 +76,9 @@ def test_processar_entrega_other_bloqueado_usa_send_invoice_link():
     """processar_entrega usa SEND_INVOICE_LINK quando OTHER esta bloqueado."""
     env = _make_enviador(pack_id=888, order_id="777")
     def cap_side(pack, option_id="OTHER"):
-        return option_id == "SEND_INVOICE_LINK"
+        if option_id == "OTHER":
+            return CapStatus.INDISPONIVEL
+        return CapStatus.DISPONIVEL
     env._ml.buscar_cap_disponivel.side_effect = cap_side
     env.processar_entrega("777")
     env._ml.enviar_followup.assert_called_once()
@@ -86,6 +89,77 @@ def test_processar_entrega_other_bloqueado_usa_send_invoice_link():
 def test_processar_entrega_ambos_bloqueados_aborta():
     """processar_entrega nao envia mensagem quando OTHER e SEND_INVOICE_LINK estao bloqueados."""
     env = _make_enviador(pack_id=888, order_id="777")
-    env._ml.buscar_cap_disponivel.return_value = False
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.INDISPONIVEL
     env.processar_entrega("777")
     env._ml.enviar_followup.assert_not_called()
+
+
+# --- Testes de CONVERSA_BLOQUEADA e ACESSO_NEGADO ---
+
+def test_processar_compra_conversa_bloqueada_usa_endpoint_convencional():
+    """processar_compra com CONVERSA_BLOQUEADA usa responder_mensagem como fallback."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.CONVERSA_BLOQUEADA
+    env.processar_compra("777")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_called_once()
+    args, _ = env._ml.responder_mensagem.call_args
+    assert args[0] == "888"
+
+
+def test_processar_compra_acesso_negado_pula_followup():
+    """processar_compra com ACESSO_NEGADO nao envia nada."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.ACESSO_NEGADO
+    env.processar_compra("777")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_not_called()
+
+
+def test_processar_envio_conversa_bloqueada_usa_endpoint_convencional():
+    """processar_envio com CONVERSA_BLOQUEADA usa responder_mensagem como fallback."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.CONVERSA_BLOQUEADA
+    env.processar_envio("777", "ship_abc")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_called_once()
+    args, _ = env._ml.responder_mensagem.call_args
+    assert args[0] == "888"
+
+
+def test_processar_envio_acesso_negado_pula_followup():
+    """processar_envio com ACESSO_NEGADO nao envia nada."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.ACESSO_NEGADO
+    env.processar_envio("777", "ship_abc")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_not_called()
+
+
+def test_processar_entrega_conversa_bloqueada_usa_endpoint_convencional():
+    """processar_entrega com CONVERSA_BLOQUEADA usa responder_mensagem como fallback."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.CONVERSA_BLOQUEADA
+    env.processar_entrega("777")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_called_once()
+    args, _ = env._ml.responder_mensagem.call_args
+    assert args[0] == "888"
+
+
+def test_processar_entrega_acesso_negado_pula_followup():
+    """processar_entrega com ACESSO_NEGADO nao envia nada."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.ACESSO_NEGADO
+    env.processar_entrega("777")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_not_called()
+
+
+def test_processar_entrega_other_indisponivel_invoice_indisponivel_pula():
+    """processar_entrega pula quando OTHER=INDISPONIVEL e SEND_INVOICE_LINK tambem INDISPONIVEL."""
+    env = _make_enviador(pack_id=888, order_id="777")
+    env._ml.buscar_cap_disponivel.return_value = CapStatus.INDISPONIVEL
+    env.processar_entrega("777")
+    env._ml.enviar_followup.assert_not_called()
+    env._ml.responder_mensagem.assert_not_called()
